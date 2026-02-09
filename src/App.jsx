@@ -191,16 +191,23 @@ const App = () => {
 	const doughnutInstance = useRef(null);
 
 	const selectedTask = projectData[selectedTaskIndex];
-	const filteredData =
-		filterType === "all"
-			? projectData
-			: projectData.filter(
-					(t) =>
-						t.type === filterType ||
-						t.category === filterType ||
-						(filterType === "Dev" &&
-							["Dev", "Mobile", "Web", "Backend"].includes(t.type)),
-				);
+	// Reusable filter logic helper
+	const getFilteredTasks = (type) => {
+		if (type === "all") return projectData;
+		return projectData.filter(
+			(t) =>
+				t.type === type ||
+				t.category === type ||
+				(type === "Dev" &&
+					["Dev", "Mobile", "Web", "Backend"].includes(t.type)) ||
+				(type === "Mobile" && t.category === "Mobile") ||
+				(type === "FE(Web)" &&
+					(t.category === "Web" || t.name === "API & Mobile Integration")) ||
+				(type === "Backend" && t.category === "Backend"),
+		);
+	};
+
+	const filteredData = getFilteredTasks(filterType);
 
 	useEffect(() => {
 		if (ganttInstance.current) {
@@ -479,19 +486,32 @@ const App = () => {
 							</p>
 						</div>
 						<div className="flex flex-wrap gap-2 no-print">
-							{["all", "Dev", "IoT", "QA"].map((type) => (
-								<button
-									key={type}
-									onClick={() => setFilterType(type)}
-									className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition border ${
-										filterType === type
-											? "bg-slate-900 text-white border-slate-900"
-											: "bg-white text-slate-500 border-slate-200 hover:border-blue-400"
-									}`}
-								>
-									{type}
-								</button>
-							))}
+							{["all", "Dev", "IoT", "QA", "Mobile", "FE(Web)", "Backend"].map(
+								(type) => (
+									<button
+										key={type}
+										onClick={() => {
+											setFilterType(type);
+											// Auto-select the first visible task in the new filter view
+											const newFiltered = getFilteredTasks(type);
+											if (newFiltered.length > 0) {
+												const firstId = newFiltered[0].id;
+												const idx = projectData.findIndex(
+													(t) => t.id === firstId,
+												);
+												setSelectedTaskIndex(idx);
+											}
+										}}
+										className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition border ${
+											filterType === type
+												? "bg-slate-900 text-white border-slate-900"
+												: "bg-white text-slate-500 border-slate-200 hover:border-blue-400"
+										}`}
+									>
+										{type}
+									</button>
+								),
+							)}
 						</div>
 					</div>
 
@@ -627,11 +647,16 @@ const App = () => {
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100">
-								{projectData.map((task, i) => (
+								{filteredData.map((task, i) => (
 									<tr
 										key={task.id}
 										className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedTaskIndex === i ? "bg-blue-50/50" : ""}`}
-										onClick={() => setSelectedTaskIndex(i)}
+										onClick={() => {
+											const originalIndex = projectData.findIndex(
+												(t) => t.id === task.id,
+											);
+											setSelectedTaskIndex(originalIndex);
+										}}
 									>
 										<td className="px-6 py-4">
 											<span
